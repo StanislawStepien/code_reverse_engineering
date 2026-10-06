@@ -1,0 +1,39 @@
+name: Build sprawdzanie_hasla executables
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'sprawdzanie_hasla.c'
+      - '.github/workflows/build-executables.yml'
+
+jobs:
+  linux-and-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mingw-w64 (Windows cross-compiler)
+        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+      - name: Build Linux binary (dynamic - static linking breaks Frida's injection on Linux)
+        run: gcc -g -O0 sprawdzanie_hasla.c -o sprawdzanie_hasla
+      - name: Build Windows binary (static libc - avoids missing-DLL errors for students)
+        run: x86_64-w64-mingw32-gcc -g -O0 -static sprawdzanie_hasla.c -o sprawdzanie_hasla.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: sprawdzanie_hasla
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-binary
+          path: sprawdzanie_hasla.exe
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build universal macOS binary (Intel + Apple Silicon in one file)
+        run: clang -g -O0 -arch x86_64 -arch arm64 sprawdzanie_hasla.c -o sprawdzanie_hasla_mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-binary
+          path: sprawdzanie_hasla_mac
